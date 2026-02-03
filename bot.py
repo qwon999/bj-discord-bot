@@ -130,26 +130,30 @@ class BOJMonitor:
 
         return submissions
 
-    def get_problem_tier(self, problem_id):
-        """solved.ac API에서 문제 난이도 정보 가져오기"""
+    def get_problem_info(self, problem_id):
+        """solved.ac API에서 문제 정보 가져오기"""
         try:
             url = f"https://solved.ac/api/v3/problem/show?problemId={problem_id}"
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                return data.get("level", 0)
-            return 0
+                return {
+                    "level": data.get("level", 0),
+                    "title": data.get("titleKo", f"문제 {problem_id}")
+                }
+            return {"level": 0, "title": f"문제 {problem_id}"}
         except Exception as e:
             print(f"[{datetime.now()}] solved.ac API 오류: {e}")
-            return 0
+            return {"level": 0, "title": f"문제 {problem_id}"}
 
     def send_discord(self, sub):
         problem_url = f"https://www.acmicpc.net/problem/{sub['problem_id']}"
         submission_url = f"https://www.acmicpc.net/status?problem_id={sub['problem_id']}&user_id={sub['username']}"
 
-        # 난이도 정보 가져오기
-        tier_level = self.get_problem_tier(sub['problem_id'])
-        tier_info = self.TIER_INFO.get(tier_level, self.TIER_INFO[0])
+        # 문제 정보 가져오기 (난이도 + 제목)
+        problem_info = self.get_problem_info(sub['problem_id'])
+        tier_info = self.TIER_INFO.get(problem_info['level'], self.TIER_INFO[0])
+        problem_title = problem_info['title']
 
         # 메모리와 시간 정보 포맷팅
         footer_text = f"{sub['language']}"
@@ -160,7 +164,7 @@ class BOJMonitor:
 
         embed = {
             "title": f"✨ {sub['username']}님이 문제를 해결했습니다!",
-            "description": f"**[{sub['problem_id']}. {sub['problem_title']}]({problem_url})**\n난이도: **{tier_info['name']}**",
+            "description": f"**[{sub['problem_id']}. {problem_title}]({problem_url})**\n난이도: **{tier_info['name']}**",
             "color": tier_info['color'],
             "footer": {
                 "text": footer_text
@@ -170,7 +174,7 @@ class BOJMonitor:
 
         r = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
         if r.status_code == 204:
-            print(f"[{datetime.now()}] 알림 전송: {sub['username']} - {sub['problem_title']} ({tier_info['name']})")
+            print(f"[{datetime.now()}] 알림 전송: {sub['username']} - {problem_title} ({tier_info['name']})")
         else:
             print(f"[{datetime.now()}] 디스코드 실패: {r.status_code}")
 
