@@ -17,6 +17,41 @@ BOJ_AUTOLOGIN = os.environ.get(
 )
 
 class BOJMonitor:
+    # 티어별 색상 및 이름
+    TIER_INFO = {
+        0: {"name": "Unrated", "color": 0x2D2D2D},
+        1: {"name": "Bronze V", "color": 0xAD5600},
+        2: {"name": "Bronze IV", "color": 0xAD5600},
+        3: {"name": "Bronze III", "color": 0xAD5600},
+        4: {"name": "Bronze II", "color": 0xAD5600},
+        5: {"name": "Bronze I", "color": 0xAD5600},
+        6: {"name": "Silver V", "color": 0x435F7A},
+        7: {"name": "Silver IV", "color": 0x435F7A},
+        8: {"name": "Silver III", "color": 0x435F7A},
+        9: {"name": "Silver II", "color": 0x435F7A},
+        10: {"name": "Silver I", "color": 0x435F7A},
+        11: {"name": "Gold V", "color": 0xEC9A00},
+        12: {"name": "Gold IV", "color": 0xEC9A00},
+        13: {"name": "Gold III", "color": 0xEC9A00},
+        14: {"name": "Gold II", "color": 0xEC9A00},
+        15: {"name": "Gold I", "color": 0xEC9A00},
+        16: {"name": "Platinum V", "color": 0x27E2A4},
+        17: {"name": "Platinum IV", "color": 0x27E2A4},
+        18: {"name": "Platinum III", "color": 0x27E2A4},
+        19: {"name": "Platinum II", "color": 0x27E2A4},
+        20: {"name": "Platinum I", "color": 0x27E2A4},
+        21: {"name": "Diamond V", "color": 0x00B4FC},
+        22: {"name": "Diamond IV", "color": 0x00B4FC},
+        23: {"name": "Diamond III", "color": 0x00B4FC},
+        24: {"name": "Diamond II", "color": 0x00B4FC},
+        25: {"name": "Diamond I", "color": 0x00B4FC},
+        26: {"name": "Ruby V", "color": 0xFF0062},
+        27: {"name": "Ruby IV", "color": 0xFF0062},
+        28: {"name": "Ruby III", "color": 0xFF0062},
+        29: {"name": "Ruby II", "color": 0xFF0062},
+        30: {"name": "Ruby I", "color": 0xFF0062},
+    }
+
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -95,29 +130,47 @@ class BOJMonitor:
 
         return submissions
 
+    def get_problem_tier(self, problem_id):
+        """solved.ac API에서 문제 난이도 정보 가져오기"""
+        try:
+            url = f"https://solved.ac/api/v3/problem/show?problemId={problem_id}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("level", 0)
+            return 0
+        except Exception as e:
+            print(f"[{datetime.now()}] solved.ac API 오류: {e}")
+            return 0
+
     def send_discord(self, sub):
         problem_url = f"https://www.acmicpc.net/problem/{sub['problem_id']}"
+        submission_url = f"https://www.acmicpc.net/status?problem_id={sub['problem_id']}&user_id={sub['username']}"
+
+        # 난이도 정보 가져오기
+        tier_level = self.get_problem_tier(sub['problem_id'])
+        tier_info = self.TIER_INFO.get(tier_level, self.TIER_INFO[0])
+
+        # 메모리와 시간 정보 포맷팅
+        footer_text = f"{sub['language']}"
+        if sub['time']:
+            footer_text += f" • {sub['time']}"
+        if sub['memory']:
+            footer_text += f" • {sub['memory']}"
 
         embed = {
-            "title": "🎉 맞았습니다!",
-            "color": 0x00FF00,
-            "fields": [
-                {"name": "👤 유저", "value": sub["username"], "inline": True},
-                {
-                    "name": "📝 문제",
-                    "value": f"[{sub['problem_id']}. {sub['problem_title']}]({problem_url})",
-                    "inline": True
-                },
-                {"name": "💻 언어", "value": sub["language"], "inline": True},
-                {"name": "⏱️ 실행시간", "value": sub["time"] or "-", "inline": True},
-                {"name": "💾 메모리", "value": sub["memory"] or "-", "inline": True},
-            ],
+            "title": f"✨ {sub['username']}님이 문제를 해결했습니다!",
+            "description": f"**[{sub['problem_id']}. {sub['problem_title']}]({problem_url})**\n난이도: **{tier_info['name']}**",
+            "color": tier_info['color'],
+            "footer": {
+                "text": footer_text
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
 
         r = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
         if r.status_code == 204:
-            print(f"[{datetime.now()}] 알림 전송: {sub['username']} - {sub['problem_title']}")
+            print(f"[{datetime.now()}] 알림 전송: {sub['username']} - {sub['problem_title']} ({tier_info['name']})")
         else:
             print(f"[{datetime.now()}] 디스코드 실패: {r.status_code}")
 
