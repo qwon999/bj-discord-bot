@@ -1,0 +1,14 @@
+services:
+  boj-bot:
+    build: .
+    container_name: boj-discord-bot
+    restart: unless-stopped
+    environment:
+      - BOJ_ID=your_boj_id
+      - BOJ_PW=your_boj_password
+      - GROUP_ID=23427
+      - WEBHOOK_URL=your_discord_webhook_url
+      - BOJ_AUTOLOGIN=your_boj_autologin_cookie
+      - POLL_INTERVAL=60
+    volumes:
+      - ./data:/data

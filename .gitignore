@@ -1,0 +1,23 @@
+# Data directory
+data/
+
+# Environment files
+docker-compose.yml
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
